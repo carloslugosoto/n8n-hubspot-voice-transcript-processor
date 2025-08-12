@@ -8,7 +8,7 @@ Este flujo de trabajo representa un **caso de uso real y de alto valor** para eq
 ![Diagrama del Flujo de Trabajo](./assets/diagrama.svg)
 
 ## N8N Flujo de Trabajo
-![Flujo de Trabajo](./assets/screnshot.png)
+![Flujo de Trabajo](./assets/screenshot.png)
 
 ## Requerimiento del Proyecto (Caso de Negocio)
 
