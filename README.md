@@ -7,6 +7,9 @@ Este flujo de trabajo representa un **caso de uso real y de alto valor** para eq
 ## Diagrama del Flujo de Trabajo
 ![Diagrama del Flujo de Trabajo](./assets/diagrama.svg)
 
+## N8N Flujo de Trabajo
+![Flujo de Trabajo](./assets/screnshot.png)
+
 ## Requerimiento del Proyecto (Caso de Negocio)
 
 El objetivo principal es automatizar el proceso de registrar interacciones de voz con clientes en HubSpot. El flujo de trabajo debe ser capaz de:
