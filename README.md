@@ -5,48 +5,7 @@ Este proyecto es una demostración de un flujo de trabajo de automatización ava
 Este flujo de trabajo representa un **caso de uso real y de alto valor** para equipos de ventas y soporte, permitiendo la automatización del registro de interacciones de voz y asegurando que ninguna información valiosa se pierda.
 
 ## Diagrama del Flujo de Trabajo
-
-## Diagrama del Flujo de Trabajo
-
-El flujo sigue una arquitectura lógica para procesar los datos, tomar decisiones y ejecutar las acciones correspondientes en el CRM.
-
-```mermaid
-graph TD
-    subgraph "1. Entrada y Análisis"
-        A[▶️ Webhook: Recibe Transcripción] --> B(🧠 AI Agent: Extrae Entidades);
-        B --> C{📊 Parsear Datos: Limpia JSON};
-    end
-
-    subgraph "2. Lógica de Negocio en HubSpot"
-        C --> D[🔍 HubSpot: Buscar Contacto por Email];
-        D --> E{❓ IF: ¿Contacto Existe?};
-    end
-
-    subgraph "3. Ramal A: Contacto NO Existe"
-        E --o|False| F[➕ HubSpot: Crear Contacto];
-        F --> G[📝 HTTP Request: Crear y Asociar Nota];
-    end
-
-    subgraph "4. Ramal B: Contacto SÍ Existe"
-        E --✔|True| H[📝 HTTP Request: Crear y Asociar Nota a Contacto Existente];
-    end
-
-    subgraph "5. Finalización"
-        G --> Z[✅ Fin del Flujo];
-        H --> Z;
-    end
-
-    style A fill:#D6EAF8,stroke:#3498DB,stroke-width:2px
-    style B fill:#D1F2EB,stroke:#1ABC9C,stroke-width:2px
-    style C fill:#D1F2EB,stroke:#1ABC9C,stroke-width:2px
-    style D fill:#FAD7A0,stroke:#F39C12,stroke-width:2px
-    style E fill:#FCF3CF,stroke:#F39C12,stroke-width:2px
-    style F fill:#FADBD8,stroke:#E74C3C,stroke-width:2px
-    style G fill:#FADBD8,stroke:#E74C3C,stroke-width:2px
-    style H fill:#E8DAEF,stroke:#8E44AD,stroke-width:2px
-    style Z fill:#E5E7E9,stroke:#979A9A,stroke-width:2px
-```
-
+![Diagrama del Flujo de Trabajo](./assets/diagrama.svg)
 
 ## Requerimiento del Proyecto (Caso de Negocio)
 
