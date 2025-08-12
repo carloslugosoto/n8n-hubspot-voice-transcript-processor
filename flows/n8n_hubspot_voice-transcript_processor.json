@@ -1,0 +1,399 @@
+{
+  "name": "n8n_hubspot_voice-transcript_processor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "procesar-transcripcion",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1408,
+        -768
+      ],
+      "id": "d4dad0a9-d3b7-4f08-bbfa-74834b231a05",
+      "name": "Webhook",
+      "webhookId": "686be960-bb96-4d9a-be17-9e2d1f1de312"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook').item.json.body.transcripcion }}",
+        "options": {
+          "systemMessage": "Eres un asistente de procesamiento de datos que solo se comunica en formato JSON. Tu única función es analizar el texto que el usuario te proporciona y extraer información clave.\n\nTu respuesta DEBE SER EXCLUSIVAMENTE un objeto JSON válido, sin ningún otro texto, comentario o explicación. No incluyas el bloque de código markdown ```json.\n\nAnaliza el texto del usuario y devuelve un JSON con esta estructura:\n{\n  \"nombre\": \"string\",\n  \"empresa\": \"string\",\n  \"email\": \"string\",\n  \"intencion\": \"string\"\n}\n\nSi un dato no se encuentra, el valor debe ser un string vacío (\"\")."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -1040,
+        -768
+      ],
+      "id": "ee301f59-a128-486d-8687-f38eafdcfcd5",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n// 1. Obtener el primer ítem que llega al nodo\nconst item = items[0];\n\n// 2. Extraer el string de texto que contiene el JSON del campo 'output'\nconst jsonString = item.json.output;\n\n// 3. Convertir (parsear) el string de texto a un objeto JSON real\nconst parsedData = JSON.parse(jsonString);\n\n// 4. Devolver el nuevo objeto. \n// Los siguientes nodos en el flujo verán esto como su entrada.\nreturn [\n  {\n    json: parsedData\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -768
+      ],
+      "id": "c4a062dc-6ce2-4bff-ad1e-fd368af18885",
+      "name": "Parsear datos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9b30cc58-f427-4023-9fcf-16a06a33157d",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        -768
+      ],
+      "id": "a04645d9-8cb7-49ed-8ebb-f6b6def818ee",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "email": "={{ $('Parsear datos').item.json.email }}",
+        "additionalFields": {
+          "companyName": "={{ $('Parsear datos').item.json.empresa }}",
+          "firstName": "={{ $('Parsear datos').item.json.nombre }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        -576
+      ],
+      "id": "24b16539-186c-45da-a07b-2e6bf4ecc015",
+      "name": "Crear Contacto",
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "4X9un0amWlFX74yU",
+          "name": "HubSpot App Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "email|string",
+                    "value": "={{ $json.email }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        -768
+      ],
+      "id": "8f9b72fb-cae7-4e0c-b04b-4f7280408f5b",
+      "name": "Buscar Contacto",
+      "alwaysOutputData": true,
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "4X9un0amWlFX74yU",
+          "name": "HubSpot App Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"hs_note_body\": \"{{ $('Webhook').item.json.body.transcripcion }}\",\n    \"hs_timestamp\": \"{{ $now.toISO() }}\"\n  },\n  \"associations\": [\n    {\n      \"to\": {\n        \"id\": \"{{ $('Buscar Contacto').item.json.id }}\"\n      },\n      \"types\": [\n        {\n          \"associationCategory\": \"HUBSPOT_DEFINED\",\n          \"associationTypeId\": 202\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -96,
+        -784
+      ],
+      "id": "9a756a40-bd77-4279-aea2-ed89ad1c8120",
+      "name": "Existe Crear Nota",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3G6f6L2BRbnzz4Ss",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"properties\": {\n    \"hs_note_body\": \"{{ $('Webhook').item.json.body.transcripcion }}\",\n    \"hs_timestamp\": \"{{ $now.toISO() }}\"\n  },\n  \"associations\": [\n    {\n      \"to\": {\n        \"id\": \"{{ $('Crear Contacto').item.json.vid.toString() }}\"\n      },\n      \"types\": [\n        {\n          \"associationCategory\": \"HUBSPOT_DEFINED\",\n          \"associationTypeId\": 202\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        16,
+        -576
+      ],
+      "id": "3a214d0c-a4e9-42b7-b964-22cc691f55fe",
+      "name": "No Existe Crear nota",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3G6f6L2BRbnzz4Ss",
+          "name": "Header Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "jF5BD1KDUgg88VQN",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "SECCIÓN 1: RECEPCIÓN DE DATOS\n\nPunto de Entrada. Este Webhook se activa al recibir una solicitud POST con un JSON que contiene el texto de una transcripción de voz. Es el disparador de toda la automatización.",
+        "height": 224,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1536,
+        -1024
+      ],
+      "id": "f80fc8b7-0e7c-467f-88b9-3c0d2d4134cd",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "deepseek/deepseek-r1:free",
+          "mode": "list",
+          "cachedResultName": "deepseek/deepseek-r1:free"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1024,
+        -528
+      ],
+      "id": "c1eef175-02f1-4cdd-8053-1e98b57bdeba",
+      "name": "Deepseek Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "BB3NRfy7kfQIUGoE",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "SECCIÓN 2: PROCESAMIENTO CON IA\n\nEl texto de la transcripción se envía a un modelo de IA para extraer entidades clave (nombre, email, empresa). El siguiente nodo (\"Parsear datos\") asegura que la salida de la IA sea un objeto JSON limpio y estructurado para los siguientes pasos.\n\n",
+        "height": 224,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        -1024
+      ],
+      "id": "896fee8b-9b8f-4e51-989e-fddcae894c34",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "SECCIÓN 3: LÓGICA DE NEGOCIO PRINCIPAL\n\nSe utiliza el email extraído para buscar el contacto en HubSpot. El nodo IF evalúa el resultado de la búsqueda y divide el flujo en dos caminos: si el contacto ya existe (rama TRUE) o si no existe (rama FALSE).",
+        "height": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -1024
+      ],
+      "id": "2ce650df-152c-4eee-bfa4-7043f8ec7cf3",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "SECCIÓN 4A: RAMA \"CONTACTO NO EXISTE\"\n\nSi el contacto no se encuentra, este camino se activa. \n1. Se crea el nuevo contacto en HubSpot con los datos extraídos.\n2. Un nodo HTTP Request llama directamente a la API de HubSpot para crear una Nota y asociarla al ID del contacto recién creado.",
+        "height": 256,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -432
+      ],
+      "id": "d4a157a1-9a05-4a10-8467-acc416b9c763",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "SECCIÓN 4B: RAMA \"CONTACTO SÍ EXISTE\"\n\nSi el contacto ya existe, el flujo sigue este camino más directo. Se utiliza el ID del contacto encontrado en la búsqueda para crear y asociar una nueva Nota a través de una llamada a la API de HubSpot, usando un nodo HTTP Request.",
+        "height": 304,
+        "width": 304
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -1104
+      ],
+      "id": "b17a9540-62bf-44d9-9739-2d76fc744a84",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parsear datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear datos": {
+      "main": [
+        [
+          {
+            "node": "Buscar Contacto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Existe Crear Nota",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear Contacto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Contacto": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Contacto": {
+      "main": [
+        [
+          {
+            "node": "No Existe Crear nota",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deepseek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7d02dbf2-792e-4b84-ad8b-5ae90170bc09",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf2ffe634d0ceff7b174ba42341e3633a41138685343a2f1c4e3ae86249e00db"
+  },
+  "id": "kJuzwGNkWhkBktUN",
+  "tags": []
+}
